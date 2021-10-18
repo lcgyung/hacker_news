@@ -1,0 +1,8 @@
+{
+  "name": "hacker_news_js",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/lcgyung/hacker_news.git",
+  "author": "lcgyung <lcgyung88@naver.com>",
+  "license": "MIT"
+}
