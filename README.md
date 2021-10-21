@@ -3,7 +3,6 @@
 ## 🐱‍🏍 Goals
  - Hacker News Clone Coding
 
----
 
 ## 🔨 Skills
  - Client Side Rendering
