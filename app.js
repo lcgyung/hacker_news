@@ -7,6 +7,7 @@ const CONTENT_URL = "https://api.hnpwa.com/v0/item/@id.json";
 // 페이지네이션
 const store = {
   currentPage: 1,
+  feeds: [],
 };
 
 // API getData
@@ -16,14 +17,22 @@ function getData(url) {
   return JSON.parse(ajax?.response);
 }
 
-// news feed list
+function makeFeeds(feeds) {
+  for (let i = 0; i < feeds.length; i++) {
+    feeds[i].read = false;
+  }
+
+  return feeds;
+}
+
+// List Page
 function newsFeed() {
   // Variables
-  const newsFeed = getData(NEWS_URL);
+  let newsFeed = store?.feeds;
   const maxPage = Math.ceil(newsFeed.length / 10);
   const newsList = [];
 
-  // UI (Template)
+  // UI Template
   let template = /*html*/ `
     <div class="bg-gray-600 min-h-screen">
       <div class="bg-white text-xl">
@@ -49,16 +58,36 @@ function newsFeed() {
     </div>
   `;
 
-  // Rendering
+  if (newsFeed.length === 0) {
+    newsFeed = store.feeds = makeFeeds(getData(NEWS_URL));
+  }
+
+  // List Rendering
   for (let i = (store.currentPage - 1) * 10; i < store.currentPage * 10; i++) {
     const o = newsFeed[i];
-    newsList.push(`
-        <li>
-          <a href="#/show/${o?.id}">
-            ${o?.title} (${o?.comments_count})
-          </a>
-        </li>
-      `);
+    newsList.push(/* html */ `
+      <div class="p-6 ${
+        o.read ? "bg-red-500" : "bg-white"
+      } mt-6 rounded-lg shadow-md transition-colors duration-500 hover:bg-green-100">
+        <div class="flex">
+          <div class="flex-auto">
+            <a href="#/show/${o.id}">${o.title}</a>
+          </div>
+          <div class="text-center text-sm">
+            <div class="w-10 text-white bg-green-300 rounded-lg px-0 py-2">
+              ${o.comments_count}
+            </div>
+          </div>
+        </div>
+        <div class="flex mt-3">
+          <div class="grid grid-cols-3 text-sm text-gray-500">
+            <div><i class="fas fa-user mr-1">${o.user}</i></div>
+            <div><i class="fas fa-heart mr-1">${o.points}</i></div>
+            <div><i class="fas fa-clock mr-1">${o.time_ago}</i></div>
+          </div>
+        </div>
+      </div>
+    `);
   }
 
   template = template.replace("{{__news_feed__}}", newsList.join(""));
@@ -74,19 +103,73 @@ function newsFeed() {
   container.innerHTML = template;
 }
 
-// 상세 페이지
+// Detail Page
 function newsDetail() {
   const id = location?.hash.substr(7);
   const newsContent = getData(CONTENT_URL.replace("@id", id));
-  container.innerHTML = `
-      <h1>${newsContent?.title}</h1>
-      <div>
-        <a href="#/page/${store.currentPage}">목록으로</a>
+  let template = /* html */ `
+    <div class="bg-gray-600 min-h-screen pb-8">
+      <div class="bg-white text-xl">
+        <div class="mx-auto px-4">
+          <div class="flex justify-between items-center py-6">
+            <div class="flex justify-start">
+              <h1 class="font-extrabold">Hacker News</h1>
+            </div>
+            <div class="items-center justify-end">
+              <a href="#/page/${store.currentPage}" class="text-gray-500">
+                <i class="fa fa-times"></i>
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
-    `;
+      <div class="h-full border rounded-xl bg-white m-6 p-4">
+        <h2>${newsContent.title}</h2>
+        <div class="text-gray-400 h-20">
+          ${newsContent.content}
+        </div>
+        {{__comments__}}
+      </div>
+    </div>
+  `;
+
+  for (let i = 0; i < store.feeds.length; i++) {
+    if (store.feeds[i].id === Number(id)) {
+      store.feeds[i].read = true;
+      break;
+    }
+  }
+
+  // Re-Comments UI
+  function makeComment(comments, called = 0) {
+    const commentString = [];
+
+    for (let i = 0; i < comments.length; i++) {
+      commentString.push(/* html */ `
+        <div style="padding-left: ${called * 40}px" class="mt-4">
+          <div class="text-gray-400">
+            <i class="fa fa-sort-up mr-2"></i>
+            <strong>${comments[i].user}</strong> ${comments[i].time_ago}
+          </div>
+          <p class="text-gray-700">${comments[i].content}</p>
+        </div>
+      `);
+
+      if (comments[i]?.comments?.length > 0) {
+        commentString.push(makeComment(comments[i].comments, called + 1));
+      }
+    }
+
+    return commentString.join("");
+  }
+
+  container.innerHTML = template.replace(
+    "{{__comments__}}",
+    makeComment(newsContent.comments)
+  );
 }
 
-// 라우터
+// Router
 function router() {
   const routePath = location.hash;
   if (routePath === "") {
